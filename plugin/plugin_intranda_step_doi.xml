@@ -1,0 +1,35 @@
+<config_plugin>
+    <!--
+        order of configuration is:
+          1.) project name and step name matches
+          2.) step name matches and project is *
+          3.) project name matches and step name is *
+          4.) project name and step name are *
+	-->
+    
+    <config>
+        <!-- which projects to use for (can be more then one, otherwise use *) -->
+        <project>*</project>
+        <step>*</step>
+        
+        <!-- sample parameter -->
+        <value>test</value>
+        
+        <field name="SPRACHE" default="- unknown language -">
+        	<data content="{meta.DocLanguage)"/>
+        	<data content="{meta.CurrentNo)"/>
+        </field>
+
+        <field name="TITEL" default="- unknown title -">
+        	<data content="{meta.firstchild.TitleDocMainShort)"/>
+        	<data content="{meta.firstchild.TitleDocMain)"/>
+        </field>
+        
+        <field name="UNSINN">
+        	<data content="{meta.firstchild.DateOfOrigin)"/>
+        	<data content="{meta.firstchild.Bearbeiter)"/>
+        </field>
+
+    </config>
+
+</config_plugin>
