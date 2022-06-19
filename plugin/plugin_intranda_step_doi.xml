@@ -15,6 +15,9 @@
         <!-- sample parameter -->
         <value>test</value>
         
+        <!-- use debug mode if the temporary xml shall be saved in the Goobi tmp folder -->
+        <debugMode>true</debugMode>
+        
         <field name="SPRACHE" default="- unknown language -">
         	<data content="{meta.DocLanguage)"/>
         	<data content="{meta.CurrentNo)"/>
