@@ -6,33 +6,46 @@
           3.) project name matches and step name is *
           4.) project name and step name are *
 	-->
-    
+
     <config>
         <!-- which projects to use for (can be more then one, otherwise use *) -->
         <project>*</project>
         <step>*</step>
-        
+
         <!-- sample parameter -->
         <value>test</value>
-        
+
         <!-- use debug mode if the temporary xml shall be saved in the Goobi tmp folder -->
         <debugMode>true</debugMode>
+
+        <!-- Path to the xsl file that shall be used for the datacite xml generation 
+        (file must be located inside of the central Goobi xslt folder) -->
+        <xslt>doi.xsl</xslt>
         
-        <field name="SPRACHE" default="- unknown language -">
+        <field name="LANGUAGE" default="- UNKNOWN LANGUAGE -">
         	<data content="{meta.DocLanguage)"/>
-        	<data content="{meta.CurrentNo)"/>
         </field>
 
-        <field name="TITEL" default="- unknown title -">
-        	<data content="{meta.firstchild.TitleDocMainShort)"/>
-        	<data content="{meta.firstchild.TitleDocMain)"/>
+        <field name="TITLE" default="- UNKNOWN TITLE -">
+        	<data content="{meta.TitleDocMain)"/>
+        </field>
+
+        <field name="IDENTIFIER" default="- NO IDENTIFIER DEFINED -">
+        	<data content="{meta.CatalogIDDigital)"/>
         </field>
         
-        <field name="UNSINN">
-        	<data content="{meta.firstchild.DateOfOrigin)"/>
-        	<data content="{meta.firstchild.Bearbeiter)"/>
+        <field name="FORMAT" default="- NO FORMAT DEFINED -">
+        	<data content="{meta.FormatSourcePrint)"/>
         </field>
 
+        <field name="PUBLICATIONYEAR" default="- NO FORMAT DEFINED -">
+        	<data content="{meta.PublicationYear)"/>
+        </field>
+        
+        <field name="CREATOR" default="- NO CREATOR DEFINED -">
+        	<data content="{meta.Author)"/>
+        </field>
+        
     </config>
 
 </config_plugin>

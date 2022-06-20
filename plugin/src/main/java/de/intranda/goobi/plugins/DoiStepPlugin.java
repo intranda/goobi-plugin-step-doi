@@ -1,9 +1,9 @@
 package de.intranda.goobi.plugins;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 
 /**
@@ -31,38 +31,35 @@ import java.util.List;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.lang3.StringUtils;
+import org.goobi.beans.Process;
 import org.goobi.beans.Step;
+import org.goobi.production.enums.LogType;
 import org.goobi.production.enums.PluginGuiType;
 import org.goobi.production.enums.PluginReturnValue;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.enums.StepReturnValue;
 import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
-
-import org.goobi.beans.Process;
-import de.sub.goobi.config.ConfigPlugins;
-import de.sub.goobi.config.ConfigurationHelper;
-import de.sub.goobi.helper.VariableReplacer;
-import de.sub.goobi.helper.exceptions.DAOException;
-import de.sub.goobi.helper.exceptions.SwapException;
-import io.goobi.workflow.xslt.XsltPreparatorDocket;
-import lombok.Getter;
-import lombok.extern.log4j.Log4j2;
-import net.xeoh.plugins.base.annotations.PluginImplementation;
-import ugh.dl.Fileformat;
-import ugh.exceptions.PreferencesException;
-import ugh.exceptions.ReadException;
-import ugh.exceptions.WriteException;
-
-import org.jdom2.Attribute;
 import org.jdom2.Document;
 import org.jdom2.Element;
-import org.jdom2.Namespace;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 import org.jdom2.transform.XSLTransformException;
 import org.jdom2.transform.XSLTransformer;
 
-import com.jayway.jsonpath.Configuration;
+import de.sub.goobi.config.ConfigPlugins;
+import de.sub.goobi.config.ConfigurationHelper;
+import de.sub.goobi.helper.Helper;
+import de.sub.goobi.helper.VariableReplacer;
+import de.sub.goobi.helper.exceptions.DAOException;
+import de.sub.goobi.helper.exceptions.SwapException;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
+import net.xeoh.plugins.base.annotations.PluginImplementation;
+import ugh.dl.DocStruct;
+import ugh.dl.Fileformat;
+import ugh.exceptions.PreferencesException;
+import ugh.exceptions.ReadException;
+import ugh.exceptions.WriteException;
 
 @PluginImplementation
 @Log4j2
@@ -83,55 +80,8 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 	public void initialize(Step step, String returnPath) {
 		this.returnPath = returnPath;
 		this.step = step;
-
-		// read parameters from correct block in configuration file
 		config = ConfigPlugins.getProjectAndStepConfig(title, step);
-
-		value = config.getString("value", "default value");
-		allowTaskFinishButtons = config.getBoolean("allowTaskFinishButtons", false);
-
 		log.info("Doi step plugin initialized");
-	}
-
-	@Override
-	public PluginGuiType getPluginGuiType() {
-		return PluginGuiType.NONE;
-	}
-
-	@Override
-	public String getPagePath() {
-		return "/uii/plugin_step_doi.xhtml";
-	}
-
-	@Override
-	public PluginType getType() {
-		return PluginType.Step;
-	}
-
-	@Override
-	public String cancel() {
-		return "/uii" + returnPath;
-	}
-
-	@Override
-	public String finish() {
-		return "/uii" + returnPath;
-	}
-
-	@Override
-	public int getInterfaceVersion() {
-		return 0;
-	}
-
-	@Override
-	public HashMap<String, StepReturnValue> validate() {
-		return null;
-	}
-
-	@Override
-	public boolean execute() {
-		PluginReturnValue ret = run();
-		return ret != PluginReturnValue.ERROR;
 	}
 
 	@Override
@@ -141,17 +91,16 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 		try {
 			// create the list of all content fields with metadata replaced in it
 			List<ContentField> contentFields = createContentFieldList();
-
+			
+			// add the DOI itself as contentfield
+			contentFields.add(new ContentField("GOOBI-DOI", "10.33510/ARCHIV.WT.1620226865241.9"));
+			
 			// create an xml document to allow xslt transformation afterwards
 			Document doc = createXmlDocumentOfContent(contentFields);
 			
 			// if debug mode is switched on write that xml file into Goobi temp folder
 			if (config.getBoolean("debugMode", false)) {
-				XMLOutputter xmlOutputter = new XMLOutputter(Format.getPrettyFormat());
-				File f = new File(ConfigurationHelper.getInstance().getTemporaryFolder(), "doi_in.xml");
-				try(FileOutputStream fileOutputStream = new FileOutputStream(f)){
-			      xmlOutputter.output(doc, fileOutputStream);
-				}
+				writeDocumentToFile(doc, "doi_in.xml");
 			}
 			
 			// do the xslt transformation
@@ -159,53 +108,20 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 			
 			// if debug mode is switched on write that xml file into Goobi temp folder
 			if (config.getBoolean("debugMode", false)) {
-				XMLOutputter xmlOutputter = new XMLOutputter(Format.getPrettyFormat());
-				File f = new File(ConfigurationHelper.getInstance().getTemporaryFolder(), "doi_out.xml");
-				try(FileOutputStream fileOutputStream = new FileOutputStream(f)){
-			      xmlOutputter.output(datacitedoc, fileOutputStream);
-				}
+				writeDocumentToFile(datacitedoc, "doi_out.xml");
 			}
 			
 		} catch (ReadException | PreferencesException | WriteException | IOException | InterruptedException
 				| SwapException | DAOException | XSLTransformException e) {
 			log.error("Error while executing the DOI plugin", e);
-		}
+			Helper.addMessageToProcessLog(getStep().getProcessId(), LogType.ERROR, "An error happend during the registration of DOIs: " + e.getMessage());
+        }
 
 		log.info("Doi step plugin executed");
 		if (!successful) {
 			return PluginReturnValue.ERROR;
 		}
 		return PluginReturnValue.FINISH;
-	}
-
-	
-	private Document doXmlTransformation(Document doc) throws XSLTransformException, IOException {
-        String xslt = ConfigurationHelper.getInstance().getXsltFolder() + "doi.xsl";
-        XSLTransformer transformer;
-        transformer = new XSLTransformer(xslt);
-        return transformer.transform(doc);
-    }
-	
-	/**
-	 * create an XML Document of all contentfields
-	 * 
-	 * @param contentFields
-	 * @return
-	 */
-	private Document createXmlDocumentOfContent(List<ContentField> contentFields) {
-		Element mainElement = new Element("doi");
-		Namespace xmlns = Namespace.getNamespace("http://www.goobi.io/goobi");
-	    mainElement.setNamespace(xmlns);
-	    Namespace xsi = Namespace.getNamespace("xsi", "http://www.w3.org/2001/XMLSchema-instance");
-        mainElement.addNamespaceDeclaration(xsi);
-        
-        Document doc = new Document(mainElement);
-        for (ContentField c : contentFields) {
-        	Element e = new Element(c.getName(), xmlns);
-        	e.setText(c.getValue());
-        	mainElement.addContent(e);
-		}
-        return doc;
 	}
 
 	
@@ -259,6 +175,106 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 			}
 			contentFields.add(cf);
 		}
+		
+		// find out publication type
+		DocStruct top = ff.getDigitalDocument().getLogicalDocStruct();
+		String topType = top.getType().getName();
+		if (top.getType().isAnchor() && top.getAllChildren()!=null && top.getAllChildren().size()>0) {
+			contentFields.add(new ContentField("GOOBI-ANCHOR-DOCTYPE", topType));
+			topType = top.getAllChildren().get(0).getType().getName();
+		}
+		contentFields.add(new ContentField("GOOBI-DOCTYPE", topType));
+		
 		return contentFields;
+	}
+	
+	/**
+	 * create an XML Document of all contentfields
+	 * 
+	 * @param contentFields
+	 * @return
+	 */
+	private Document createXmlDocumentOfContent(List<ContentField> contentFields) {
+		Element mainElement = new Element("goobi");
+	    Document doc = new Document(mainElement);
+        for (ContentField c : contentFields) {
+        	Element e = new Element(c.getName());
+        	e.setText(c.getValue());
+        	mainElement.addContent(e);
+		}
+        return doc;
+	}
+	
+	/**
+	 * do the xslt transformation and pass back the transformation result as xml document
+	 * 
+	 * @param doc
+	 * @return
+	 * @throws XSLTransformException
+	 * @throws IOException
+	 */
+	private Document doXmlTransformation(Document doc) throws XSLTransformException, IOException {
+        String xsltfile = config.getString("xslt");
+		String xsltpath = ConfigurationHelper.getInstance().getXsltFolder() + xsltfile;
+        XSLTransformer transformer;
+        transformer = new XSLTransformer(xsltpath);
+        return transformer.transform(doc);
+    }
+
+	/**
+	 * write xml document into the file system
+	 * @param doc
+	 * @param filename
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 */
+	private void writeDocumentToFile(Document doc, String filename) throws IOException, FileNotFoundException {
+		XMLOutputter xmlOutputter = new XMLOutputter(Format.getPrettyFormat());
+		File f = new File(ConfigurationHelper.getInstance().getTemporaryFolder(), filename);
+		try(FileOutputStream fileOutputStream = new FileOutputStream(f)){
+			xmlOutputter.output(doc, fileOutputStream);
+		}
+	}
+	
+
+	@Override
+	public PluginGuiType getPluginGuiType() {
+		return PluginGuiType.NONE;
+	}
+
+	@Override
+	public String getPagePath() {
+		return "/uii/plugin_step_doi.xhtml";
+	}
+
+	@Override
+	public PluginType getType() {
+		return PluginType.Step;
+	}
+
+	@Override
+	public String cancel() {
+		return "/uii" + returnPath;
+	}
+
+	@Override
+	public String finish() {
+		return "/uii" + returnPath;
+	}
+
+	@Override
+	public int getInterfaceVersion() {
+		return 0;
+	}
+
+	@Override
+	public HashMap<String, StepReturnValue> validate() {
+		return null;
+	}
+
+	@Override
+	public boolean execute() {
+		PluginReturnValue ret = run();
+		return ret != PluginReturnValue.ERROR;
 	}
 }
