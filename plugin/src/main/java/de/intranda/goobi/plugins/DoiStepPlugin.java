@@ -31,6 +31,13 @@ import java.util.List;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
+import org.apache.http.client.fluent.Executor;
+import org.apache.http.client.fluent.Request;
+import org.apache.http.entity.ContentType;
+import org.apache.http.util.EntityUtils;
 import org.goobi.beans.Process;
 import org.goobi.beans.Step;
 import org.goobi.production.enums.LogType;
@@ -41,6 +48,7 @@ import org.goobi.production.enums.StepReturnValue;
 import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
 import org.jdom2.Document;
 import org.jdom2.Element;
+import org.jdom2.JDOMException;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 import org.jdom2.transform.XSLTransformException;
@@ -57,8 +65,11 @@ import lombok.extern.log4j.Log4j2;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
 import ugh.dl.DocStruct;
 import ugh.dl.Fileformat;
+import ugh.dl.Metadata;
+import ugh.dl.MetadataType;
 import ugh.exceptions.PreferencesException;
 import ugh.exceptions.ReadException;
+import ugh.exceptions.UGHException;
 import ugh.exceptions.WriteException;
 
 @PluginImplementation
@@ -75,7 +86,10 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 	private boolean allowTaskFinishButtons;
 	private String returnPath;
 	private SubnodeConfiguration config;
-
+	private Process p;
+	private Fileformat ff;
+	private VariableReplacer replacer;
+	
 	@Override
 	public void initialize(Step step, String returnPath) {
 		this.returnPath = returnPath;
@@ -89,11 +103,48 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 		boolean successful = false;
 
 		try {
+			
+			// Open the metadata file for the process and prepare the VariableReplacer
+			p = step.getProzess();
+			ff = p.readMetadataFile();
+			replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(),
+					p, null);
+
+			// load topstruct
+            DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
+            if (topstruct.getType().isAnchor()) {
+            	topstruct = topstruct.getAllChildren().get(0);
+            }
+            
+            // read catalogue identifier
+            MetadataType idType = p.getRegelsatz().getPreferences().getMetadataTypeByName("CatalogIDDigital");
+            String myId = getExistingMetadata(topstruct, idType);
+            
+            // try to read existing DOI 
+            String doiTypeName = config.getString("metadata", "DOI");
+            MetadataType doiType = p.getRegelsatz().getPreferences().getMetadataTypeByName(doiTypeName);
+            String myDoi = getExistingMetadata(topstruct, doiType);
+            boolean hadDoi = StringUtils.isNotBlank(myDoi);
+            
+			// add the new or existing DOI as contentfield
+			if (!hadDoi) {
+				// prepare a new DOI name if not existing
+	            String name = config.getString("name");
+	            String prefix = config.getString("prefix");
+	            String separator = config.getString("separator", "-");
+	            String postfix = "";
+	            if (StringUtils.isNotBlank(prefix)) {
+	            	postfix = prefix + separator;
+	            }
+	            if (StringUtils.isNotBlank(name)) {
+	            	postfix += name + separator;
+	            }
+	            myDoi = config.getString("base") + "/" + postfix + myId;
+	        }
+
 			// create the list of all content fields with metadata replaced in it
 			List<ContentField> contentFields = createContentFieldList();
-			
-			// add the DOI itself as contentfield
-			contentFields.add(new ContentField("GOOBI-DOI", "10.33510/ARCHIV.WT.1620226865241.9"));
+			contentFields.add(new ContentField("GOOBI-DOI", myDoi));
 			
 			// create an xml document to allow xslt transformation afterwards
 			Document doc = createXmlDocumentOfContent(contentFields);
@@ -110,9 +161,21 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 			if (config.getBoolean("debugMode", false)) {
 				writeDocumentToFile(datacitedoc, "doi_out.xml");
 			}
-			
-		} catch (ReadException | PreferencesException | WriteException | IOException | InterruptedException
-				| SwapException | DAOException | XSLTransformException e) {
+            
+            // create or update DOI
+            if (!hadDoi) {
+				// register a complete new DOI
+            	successful = createDoi(topstruct, myDoi, doiType, datacitedoc);
+			} else {
+				// update the existing DOI
+				updateDoi(myDoi, datacitedoc);
+			}
+		
+            // check if doi is accessible
+            log.debug("DOI is accessible: " + HelperHttp.checkUrlBasicAuth("doi/" + myDoi, config));
+            
+		} catch (UGHException | IOException | InterruptedException
+				| SwapException | DAOException | JDOMException e) {
 			log.error("Error while executing the DOI plugin", e);
 			Helper.addMessageToProcessLog(getStep().getProcessId(), LogType.ERROR, "An error happend during the registration of DOIs: " + e.getMessage());
         }
@@ -124,7 +187,86 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 		return PluginReturnValue.FINISH;
 	}
 
+	/**
+     * create doi and save it in the docstruct.
+     * 
+     * @param prefs
+     * @param iIndex
+     * @param anchor
+     * @param anchor
+     * 
+     * @return Returns the doi.
+     * @throws JDOMException
+     * @throws UGHException
+	 * @throws DAOException 
+	 * @throws SwapException 
+	 * @throws InterruptedException 
+     */
+    private boolean createDoi(DocStruct docstruct, String doi, MetadataType doiType, Document doc)
+            throws IOException, JDOMException, UGHException, InterruptedException, SwapException, DAOException {
+        
+    	// draft for DOI
+    	String result = HelperHttp.postXmlBasicAuth(doc, "metadata/" + doi, config);
+        
+    	// if drafting was successful then make it findable
+        if (StringUtils.isBlank(result)) {
+        	String viewer = config.getString("viewer");        	
+        	String text = "doi=" + doi + "\n" + "url=" + viewer + doi;
+			result = HelperHttp.putTxtBasicAuth(text, "doi/" + doi, config);
+        	
+        	// if findable then update METS file
+        	if (StringUtils.isBlank(result)) {
+	        	// Write DOI metadata into the docstruct.
+		        Metadata md = new Metadata(doiType);
+		        md.setValue(doi);
+		        docstruct.addMetadata(md);
+		        p.writeMetadataFile(ff);
+		        Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was registered: " + doi);
+        	} 
+        }
+        
+        // if no draft or not findable report error
+        if (StringUtils.isNotBlank(result)) {
+            Helper.addMessageToProcessLog(p.getId(), LogType.ERROR, "A new DOI could not get registered: " + result);
+            return false;
+        }
+        return true;
+    }
 	
+    /**
+     * Update an existing DOI
+     * @param anchor 
+     * @throws IOException 
+     * @throws ParseException 
+     */
+    private boolean updateDoi(String doi, Document doc) throws ParseException, IOException {        
+
+    	String result = HelperHttp.putXmlBasicAuth(doc, "metadata/" + doi, config);
+
+    	// if no draft or not findable report error
+        if (StringUtils.isNotBlank(result)) {
+            Helper.addMessageToProcessLog(p.getId(), LogType.ERROR, "The existing DOI could not get updated: " + result);
+            return false;
+        } else {
+	        Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "The existing DOI was updated: " + doi);
+	        return true;
+        } 
+    }
+    
+	/**
+     * If the element already has a DOI, return it, otherwise return null.
+     * 
+     * @param docstruct
+     * @return
+     */
+    private String getExistingMetadata(DocStruct docstruct, MetadataType type) {
+    	List<? extends Metadata> list = docstruct.getAllMetadataByType(type);
+        if (list.size() > 0) {
+            return list.get(0).getValue();
+        }
+        return null;
+    }
+    
 	/**
 	 * create a list lf ContentField that contains each configured field with its preferred value in it
 	 * the values are filled using the variable replacer
@@ -142,12 +284,6 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 			PreferencesException, SwapException, DAOException, WriteException {
 		// Create a list of variables
 		List<ContentField> contentFields = new ArrayList<ContentField>();
-
-		// Open the metadata file for the process and prepare the VariableReplacer
-		Process p = step.getProzess();
-		Fileformat ff = p.readMetadataFile();
-		VariableReplacer replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(),
-				p, null);
 
 		// run through all defined fields to fill their content
 		List<HierarchicalConfiguration> fields = config.configurationsAt("field");

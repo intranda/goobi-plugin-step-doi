@@ -12,11 +12,27 @@
         <project>*</project>
         <step>*</step>
 
-        <!-- sample parameter -->
-        <value>test</value>
-
         <!-- use debug mode if the temporary xml shall be saved in the Goobi tmp folder -->
         <debugMode>true</debugMode>
+
+		<!-- authentication and main information -->
+        <!-- For testing: https://mds.test.datacite.org/ -->
+        <!-- For production https://mds.datacite.org/ -->
+		<serviceAddress>https://mds.test.datacite.org/</serviceAddress>
+        
+		<!-- authentication and main information -->
+		<base>10.33510</base>
+		<viewer>https://viewer.example.org/resolver?field=MD_PI_DOI&amp;identifier=</viewer>
+		<username>USER</username>
+		<password>PASSWORD</password>
+
+		<!-- name parts for DOI composition -->
+		<prefix>go</prefix>
+		<name>goobi</name>
+		<separator>-</separator>
+		
+		<!-- metadata field from ruleset where to store the DOI -->
+		<metadata>DOI</metadata>
 
         <!-- Path to the xsl file that shall be used for the datacite xml generation 
         (file must be located inside of the central Goobi xslt folder) -->
@@ -28,6 +44,14 @@
 
         <field name="TITLE" default="- UNKNOWN TITLE -">
         	<data content="{meta.TitleDocMain)"/>
+        </field>
+        
+        <field name="ANCHORTITLE" default="- UNKNOWN ANCHOR TITLE -">
+        	<data content="{meta.topstruct.TitleDocMain)"/>
+        </field>
+
+        <field name="ANCHORSUBTITLE" default="- UNKNOWN ANCHOR SUB TITLE -">
+        	<data content="{meta.topstruct.TitleDocSub1)"/>
         </field>
 
         <field name="IDENTIFIER" default="- NO IDENTIFIER DEFINED -">
@@ -45,7 +69,20 @@
         <field name="CREATOR" default="- NO CREATOR DEFINED -">
         	<data content="{meta.Author)"/>
         </field>
+
+        <field name="PUBLISHER" default="- NO PUBLISHER DEFINED -">
+        	<data content="{meta.PublisherName)"/>
+        </field>
         
+        <field name="SERIES" default="- NO SERIES DEFINED -">
+        	<data content="{meta.PublicationSeries)"/>
+        </field>
+        
+        <field name="NUMBER">
+        	<data content="{meta.CurrentNo)"/>
+        	<data content="{meta.CurrentNoSorting)"/>
+        </field>
+                
     </config>
 
 </config_plugin>

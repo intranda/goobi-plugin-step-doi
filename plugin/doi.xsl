@@ -8,7 +8,7 @@
   <titles>
       <title><xsl:value-of select="//TITLE"/></title>
   </titles>
-  <publisher>:unkn</publisher>
+  <publisher><xsl:value-of select="//PUBLISHER"/></publisher>
   <publicationYear><xsl:value-of select="//PUBLICATIONYEAR"/></publicationYear>
   <resourceType resourceTypeGeneral="Text"><xsl:value-of select="//GOOBI-DOCTYPE"/></resourceType>
   <language><xsl:value-of select="//LANGUAGE"/></language>
@@ -30,6 +30,18 @@
           <contributorName>Wirtschaftsuniversität Wien</contributorName>
       </contributor>
   </contributors>
+
+<!-- 
+  <xsl:if test="//NUMBER != ''">
+	  <relatedItem relatedItemType="Collection" relationType="IsPartOf">
+      <title><xsl:value-of select="//ANCHORTITLE"/></title>
+      <title titleType="Subtitle"><xsl:value-of select="//ANCHORSUBTITLE"/></title>
+      <volume><xsl:value-of select="//SERIES"/></volume>
+      <number><xsl:value-of select="//NUMBER"/></number>
+    </relatedItem>	
+  </xsl:if>
+-->
+
 
 </resource>
 </xsl:template>
