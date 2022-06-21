@@ -13,13 +13,9 @@ import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
-import org.goobi.production.enums.LogType;
 import org.jdom2.Document;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
-
-import de.sub.goobi.helper.Helper;
-import ugh.dl.Metadata;
 
 public class HelperHttp {
 	
