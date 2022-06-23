@@ -39,48 +39,48 @@
 		<xslt>doi.xsl</xslt>
 		
 		<field name="LANGUAGE" default="- UNKNOWN LANGUAGE -">
-			<data content="{meta.DocLanguage)"/>
+			<data content="{meta.DocLanguage}"/>
 		</field>
 		
 		<field name="TITLE" default="- UNKNOWN TITLE -">
-			<data content="{meta.TitleDocMain)"/>
+			<data content="{meta.TitleDocMain}"/>
 		</field>
 		
 		<field name="ANCHORTITLE" default="- UNKNOWN ANCHOR TITLE -">
-			<data content="{meta.topstruct.TitleDocMain)"/>
+			<data content="{meta.topstruct.TitleDocMain}"/>
 		</field>
 		
 		<field name="ANCHORSUBTITLE" default="- UNKNOWN ANCHOR SUB TITLE -">
-			<data content="{meta.topstruct.TitleDocSub1)"/>
+			<data content="{meta.topstruct.TitleDocSub1}"/>
 		</field>
 		
 		<field name="IDENTIFIER" default="- NO IDENTIFIER DEFINED -">
-			<data content="{meta.CatalogIDDigital)"/>
+			<data content="{meta.CatalogIDDigital}"/>
 		</field>
 		
 		<field name="FORMAT" default="- NO FORMAT DEFINED -">
-			<data content="{meta.FormatSourcePrint)"/>
+			<data content="{meta.FormatSourcePrint}"/>
 		</field>
 		
 		<field name="PUBLICATIONYEAR" default="- NO FORMAT DEFINED -">
-			<data content="{meta.PublicationYear)"/>
+			<data content="{meta.PublicationYear}"/>
 		</field>
 		
 		<field name="CREATOR" default="- NO CREATOR DEFINED -">
-			<data content="{meta.Author)"/>
+			<data content="{meta.Author}"/>
 		</field>
 		
 		<field name="PUBLISHER" default="- NO PUBLISHER DEFINED -">
-			<data content="{meta.PublisherName)"/>
+			<data content="{meta.PublisherName}"/>
 		</field>
 		
 		<field name="SERIES" default="- NO SERIES DEFINED -">
-			<data content="{meta.PublicationSeries)"/>
+			<data content="{meta.PublicationSeries}"/>
 		</field>
 		
 		<field name="NUMBER">
-			<data content="{meta.CurrentNo)"/>
-			<data content="{meta.CurrentNoSorting)"/>
+			<data content="{meta.CurrentNo}"/>
+			<data content="{meta.CurrentNoSorting}"/>
 		</field>
                 
     </config>
