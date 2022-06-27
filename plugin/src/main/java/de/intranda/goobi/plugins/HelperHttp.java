@@ -3,6 +3,7 @@ package de.intranda.goobi.plugins;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.http.HttpEntity;
@@ -73,14 +74,15 @@ public class HelperHttp {
 	public static String postXmlBasicAuth(Document doc, String urlSuffix, SubnodeConfiguration config) throws ParseException, IOException {
         XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
     	String xmlString = outputter.outputString(doc);
-        String password = config.getString("password");
+    	byte[] xmlStringAsArray = xmlString.getBytes(StandardCharsets.UTF_8);
+    	String password = config.getString("password");
         String user = config.getString("username");
         String url = config.getString("serviceAddress") + urlSuffix;
         Executor executor = Executor.newInstance().auth(user, password);
         Request r = Request.Post(url)
         		.addHeader("Content-Type", "application/xml;charset=UTF-8")
         		.useExpectContinue()
-                .bodyString(xmlString, ContentType.APPLICATION_XML);
+        		.bodyByteArray(xmlStringAsArray);
         
         HttpResponse hr = executor.execute(r).returnResponse();
         HttpEntity entity = hr.getEntity();
@@ -104,15 +106,18 @@ public class HelperHttp {
 	 */
 	public static String putXmlBasicAuth(Document doc, String urlSuffix, SubnodeConfiguration config) throws ParseException, IOException {
         XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
-    	String xmlString = outputter.outputString(doc);
+        String xmlString = outputter.outputString(doc);
+        byte[] xmlStringAsArray = xmlString.getBytes(StandardCharsets.UTF_8);
         String password = config.getString("password");
         String user = config.getString("username");
         String url = config.getString("serviceAddress") + urlSuffix;
         Executor executor = Executor.newInstance().auth(user, password);
+        
         Request r = Request.Put(url)
         		.addHeader("Content-Type", "application/xml;charset=UTF-8")
+        		.addHeader("charset", "UTF-8")
         		.useExpectContinue()
-                .bodyString(xmlString, ContentType.APPLICATION_XML);
+        		.bodyByteArray(xmlStringAsArray);
         
         HttpResponse hr = executor.execute(r).returnResponse();
         HttpEntity entity = hr.getEntity();
