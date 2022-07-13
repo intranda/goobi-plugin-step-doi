@@ -201,24 +201,37 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         
     	// draft for DOI
     	String result = HelperHttp.postXmlBasicAuth(doc, "metadata/" + doi, config);
-        
-    	// if drafting was successful then make it findable
-        if (StringUtils.isBlank(result)) {
-        	String viewer = config.getString("viewer");        	
-        	String text = "doi=" + doi + "\n" + "url=" + viewer + doi;
-			result = HelperHttp.putTxtBasicAuth(text, "doi/" + doi, config);
-        	
-        	// if findable then update METS file
-        	if (StringUtils.isBlank(result)) {
-	        	// Write DOI metadata into the docstruct.
-		        Metadata md = new Metadata(doiType);
-		        md.setValue(doi);
-		        docstruct.addMetadata(md);
-		        p.writeMetadataFile(ff);
-		        Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was registered: " + doi);
-        	} 
-        }
-        
+
+		// if drafting was successful write metadata or make it findable
+		if (StringUtils.isBlank(result)) {
+
+			// if draft is configured finish here
+			if (config.getBoolean("draft", false)) {
+				// Write DOI metadata into the docstruct.
+				Metadata md = new Metadata(doiType);
+				md.setValue(doi);
+				docstruct.addMetadata(md);
+				p.writeMetadataFile(ff);
+				Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was drafted: " + doi);
+
+			// if drafting was successful then make it findable
+			} else {
+				String viewer = config.getString("viewer");
+				String text = "doi=" + doi + "\n" + "url=" + viewer + doi;
+				result = HelperHttp.putTxtBasicAuth(text, "doi/" + doi, config);
+
+				// if findable then update METS file
+				if (StringUtils.isBlank(result)) {
+					// Write DOI metadata into the docstruct.
+					Metadata md = new Metadata(doiType);
+					md.setValue(doi);
+					docstruct.addMetadata(md);
+					p.writeMetadataFile(ff);
+					Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was registered: " + doi);
+				}
+			}
+		}
+
         // if no draft or not findable report error
         if (StringUtils.isNotBlank(result)) {
             Helper.addMessageToProcessLog(p.getId(), LogType.ERROR, "A new DOI could not get registered: " + result);
@@ -236,6 +249,14 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
     private boolean updateDoi(String doi, Document doc) throws ParseException, IOException {        
 
     	String result = HelperHttp.putXmlBasicAuth(doc, "metadata/" + doi, config);
+
+    	// if draft is not configured and doi is not findable, make it findable
+		if (StringUtils.isBlank(result) && !config.getBoolean("draft", false)
+				&& !HelperHttp.checkUrlBasicAuth("doi/" + doi, config)) {
+			String viewer = config.getString("viewer");
+			String text = "doi=" + doi + "\n" + "url=" + viewer + doi;
+			result = HelperHttp.putTxtBasicAuth(text, "doi/" + doi, config);
+		}
 
     	// if no draft or not findable report error
         if (StringUtils.isNotBlank(result)) {
