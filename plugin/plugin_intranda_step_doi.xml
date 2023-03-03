@@ -13,7 +13,7 @@
 		<step>*</step>
 		
 		<!-- use debug mode if the temporary xml shall be saved in the Goobi tmp folder -->
-		      <debugMode>true</debugMode>
+		<debugMode>true</debugMode>
 		      
 		<!-- use draft if the doi should only be registered in draft state -->
 		<draft>true</draft>
