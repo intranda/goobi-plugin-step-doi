@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ContentField {
-	private String name;
-	private String value;
+    private String name;
+    private String value;
 }

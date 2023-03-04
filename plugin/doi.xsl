@@ -10,14 +10,21 @@
   </titles>
   <publisher><xsl:value-of select="//PUBLISHER"/></publisher>
   <publicationYear><xsl:value-of select="//PUBLICATIONYEAR"/></publicationYear>
+  <subjects>
+      <xsl:for-each select="//SUBJECT">
+          <subject xml:lang="de-DE"><xsl:value-of select="."/></subject>
+      </xsl:for-each>
+  </subjects>
   <resourceType resourceTypeGeneral="Text"><xsl:value-of select="//GOOBI-DOCTYPE"/></resourceType>
   <language><xsl:value-of select="//LANGUAGE"/></language>
   <creators>
-      <creator>
-          <creatorName><xsl:value-of select="//CREATOR"/></creatorName>
-          <givenName><xsl:value-of select="substring-before(//CREATOR, ', ')"/></givenName>
-          <familyName><xsl:value-of select="substring-after(//CREATOR, ', ')"/></familyName>
-      </creator>
+      <xsl:for-each select="//CREATOR">
+          <creator>
+            <creatorName><xsl:value-of select="."/></creatorName>
+            <givenName><xsl:value-of select="substring-before(., ', ')"/></givenName>
+            <familyName><xsl:value-of select="substring-after(., ', ')"/></familyName>
+          </creator>
+      </xsl:for-each>
   </creators>
   <sizes>
       <size><xsl:value-of select="//FORMAT"/></size>

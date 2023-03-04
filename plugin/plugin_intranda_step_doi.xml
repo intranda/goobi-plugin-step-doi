@@ -69,8 +69,8 @@
 			<data content="{meta.PublicationYear}"/>
 		</field>
 		
-		<field name="CREATOR" default="- NO CREATOR DEFINED -">
-			<data content="{meta.Author}"/>
+		<field name="CREATOR" default="- NO CREATOR DEFINED -" repeatable="true">
+			<data content="{metas.Author}"/>
 		</field>
 		
 		<field name="PUBLISHER" default="- NO PUBLISHER DEFINED -">
@@ -85,7 +85,10 @@
 			<data content="{meta.CurrentNo}"/>
 			<data content="{meta.CurrentNoSorting}"/>
 		</field>
-                
+        
+        <field name="SUBJECT" default="- UNKNOWN SUBJECT -" repeatable="true">
+        	<data content="{metas.SubjectTopic}"/>
+        </field>
     </config>
 
 </config_plugin>
