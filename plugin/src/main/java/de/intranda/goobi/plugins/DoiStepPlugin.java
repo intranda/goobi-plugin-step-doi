@@ -103,7 +103,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             ff = p.readMetadataFile();
             replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(),
                     p, null);
-
+            
             // load topstruct
             DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
             if (topstruct.getType().isAnchor()) {
@@ -301,7 +301,9 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             PreferencesException, SwapException, DAOException, WriteException {
         // Create a list of variables
         List<ContentField> contentFields = new ArrayList<>();
-
+        String separator = "; ";
+        replacer.setSeparator(separator);
+        
         // run through all defined fields to fill their content
         List<HierarchicalConfiguration> fields = config.configurationsAt("field");
         for (HierarchicalConfiguration field : fields) {
@@ -328,7 +330,6 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
             // if the field is repeatable create multiple ContentFields for each entry (separated by semicolon)
             boolean repeatable = field.getBoolean("@repeatable", false);
-            String separator = "; ";
             if (!repeatable || !value.contains(separator)) {
                 ContentField cf = new ContentField();
                 cf.setName(field.getString("@name"));
