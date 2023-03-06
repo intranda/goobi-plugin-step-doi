@@ -103,7 +103,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             ff = p.readMetadataFile();
             replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(),
                     p, null);
-            
+
             // load topstruct
             DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
             if (topstruct.getType().isAnchor()) {
@@ -302,8 +302,8 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         // Create a list of variables
         List<ContentField> contentFields = new ArrayList<>();
         String separator = "; ";
-        replacer.setSeparator(separator);
-        
+        replacer.setSEPARATOR(separator);
+
         // run through all defined fields to fill their content
         List<HierarchicalConfiguration> fields = config.configurationsAt("field");
         for (HierarchicalConfiguration field : fields) {
