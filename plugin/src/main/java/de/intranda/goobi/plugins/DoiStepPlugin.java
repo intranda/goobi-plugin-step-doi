@@ -70,6 +70,7 @@ import ugh.exceptions.WriteException;
 @Log4j2
 public class DoiStepPlugin implements IStepPluginVersion2 {
 
+    private static final long serialVersionUID = -9093540848644429154L;
     @Getter
     private String title = "intranda_step_doi";
     @Getter
@@ -81,8 +82,8 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
     private String returnPath;
     private SubnodeConfiguration config;
     private Process p;
-    private Fileformat ff;
-    private VariableReplacer replacer;
+    private transient Fileformat ff;
+    private transient VariableReplacer replacer;
 
     @Override
     public void initialize(Step step, String returnPath) {
@@ -101,8 +102,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             // Open the metadata file for the process and prepare the VariableReplacer
             p = step.getProzess();
             ff = p.readMetadataFile();
-            replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(),
-                    p, null);
+            replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(), p, null);
 
             // load topstruct
             DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
@@ -168,10 +168,9 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             // check if doi is accessible
             log.debug("DOI is accessible: " + HelperHttp.checkUrlBasicAuth("doi/" + myDoi, config));
 
-        } catch (UGHException | IOException | InterruptedException
-                | SwapException | DAOException | JDOMException e) {
+        } catch (UGHException | IOException | SwapException | JDOMException e) {
             log.error("Error while executing the DOI plugin", e);
-            Helper.addMessageToProcessLog(getStep().getProcessId(), LogType.ERROR,
+            Helper.addMessageToProcessJournal(getStep().getProcessId(), LogType.ERROR,
                     "An error happend during the registration of DOIs: " + e.getMessage());
         }
 
@@ -197,8 +196,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws SwapException
      * @throws InterruptedException
      */
-    private boolean createDoi(DocStruct docstruct, String doi, MetadataType doiType, Document doc)
-            throws IOException, JDOMException, UGHException, InterruptedException, SwapException, DAOException {
+    private boolean createDoi(DocStruct docstruct, String doi, MetadataType doiType, Document doc) throws IOException, UGHException, SwapException {
 
         // draft for DOI
         String result = HelperHttp.postXmlBasicAuth(doc, "metadata/" + doi, config);
@@ -213,7 +211,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
                 md.setValue(doi);
                 docstruct.addMetadata(md);
                 p.writeMetadataFile(ff);
-                Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was drafted: " + doi);
+                Helper.addMessageToProcessJournal(p.getId(), LogType.INFO, "A new DOI was drafted: " + doi);
 
                 // if drafting was successful then make it findable
             } else {
@@ -228,14 +226,14 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
                     md.setValue(doi);
                     docstruct.addMetadata(md);
                     p.writeMetadataFile(ff);
-                    Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "A new DOI was registered: " + doi);
+                    Helper.addMessageToProcessJournal(p.getId(), LogType.INFO, "A new DOI was registered: " + doi);
                 }
             }
         }
 
         // if no draft or not findable report error
         if (StringUtils.isNotBlank(result)) {
-            Helper.addMessageToProcessLog(p.getId(), LogType.ERROR, "A new DOI could not get registered: " + result);
+            Helper.addMessageToProcessJournal(p.getId(), LogType.ERROR, "A new DOI could not get registered: " + result);
             return false;
         }
         return true;
@@ -253,8 +251,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         String result = HelperHttp.putXmlBasicAuth(doc, "metadata/" + doi, config);
 
         // if draft is not configured and doi is not findable, make it findable
-        if (StringUtils.isBlank(result) && !config.getBoolean("draft", false)
-                && !HelperHttp.checkUrlBasicAuth("doi/" + doi, config)) {
+        if (StringUtils.isBlank(result) && !config.getBoolean("draft", false) && !HelperHttp.checkUrlBasicAuth("doi/" + doi, config)) {
             String viewer = config.getString("viewer");
             String text = "doi=" + doi + "\n" + "url=" + viewer + doi;
             result = HelperHttp.putTxtBasicAuth(text, "doi/" + doi, config);
@@ -262,10 +259,10 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
         // if no draft or not findable report error
         if (StringUtils.isNotBlank(result)) {
-            Helper.addMessageToProcessLog(p.getId(), LogType.ERROR, "The existing DOI could not get updated: " + result);
+            Helper.addMessageToProcessJournal(p.getId(), LogType.ERROR, "The existing DOI could not get updated: " + result);
             return false;
         } else {
-            Helper.addMessageToProcessLog(p.getId(), LogType.INFO, "The existing DOI was updated: " + doi);
+            Helper.addMessageToProcessJournal(p.getId(), LogType.INFO, "The existing DOI was updated: " + doi);
             return true;
         }
     }
@@ -278,7 +275,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      */
     private String getExistingMetadata(DocStruct docstruct, MetadataType type) {
         List<? extends Metadata> list = docstruct.getAllMetadataByType(type);
-        if (list.size() > 0) {
+        if (!list.isEmpty()) {
             return list.get(0).getValue();
         }
         return null;
@@ -297,8 +294,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws DAOException
      * @throws WriteException
      */
-    private List<ContentField> createContentFieldList() throws ReadException, IOException, InterruptedException,
-            PreferencesException, SwapException, DAOException, WriteException {
+    private List<ContentField> createContentFieldList() throws PreferencesException {
         // Create a list of variables
         List<ContentField> contentFields = new ArrayList<>();
         String separator = "; ";
@@ -309,39 +305,40 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         for (HierarchicalConfiguration field : fields) {
 
             // run through all data elements to get a field value
-            String value = null;
+            String val = null;
             List<HierarchicalConfiguration> datas = field.configurationsAt("data");
             for (HierarchicalConfiguration d : datas) {
                 String content = d.getString("@content");
                 String result = replacer.replace(content);
                 // if the content ist not empty and it is different from the variable use it
                 if (StringUtils.isNotBlank(result) && !result.equals(content)) {
-                    value = result;
+                    val = result;
                     break;
                 }
             }
             // if no content was set yet then set the default if available
-            if (StringUtils.isBlank(value)) {
+            if (StringUtils.isBlank(val)) {
                 String thedefault = field.getString("@default");
                 if (!StringUtils.isBlank(thedefault)) {
-                    value = thedefault;
+                    val = thedefault;
                 }
             }
-
-            // if the field is repeatable create multiple ContentFields for each entry (separated by semicolon)
-            boolean repeatable = field.getBoolean("@repeatable", false);
-            if (!repeatable || !value.contains(separator)) {
-                ContentField cf = new ContentField();
-                cf.setName(field.getString("@name"));
-                cf.setValue(value);
-                contentFields.add(cf);
-            } else {
-                String[] vlist = value.split(separator);
-                for (String v : vlist) {
+            if (val != null) {
+                // if the field is repeatable create multiple ContentFields for each entry (separated by semicolon)
+                boolean repeatable = field.getBoolean("@repeatable", false);
+                if (!repeatable || !val.contains(separator)) {
                     ContentField cf = new ContentField();
                     cf.setName(field.getString("@name"));
-                    cf.setValue(v);
+                    cf.setValue(val);
                     contentFields.add(cf);
+                } else {
+                    String[] vlist = val.split(separator);
+                    for (String v : vlist) {
+                        ContentField cf = new ContentField();
+                        cf.setName(field.getString("@name"));
+                        cf.setValue(v);
+                        contentFields.add(cf);
+                    }
                 }
             }
         }
@@ -349,7 +346,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         // find out publication type
         DocStruct top = ff.getDigitalDocument().getLogicalDocStruct();
         String topType = top.getType().getName();
-        if (top.getType().isAnchor() && top.getAllChildren() != null && top.getAllChildren().size() > 0) {
+        if (top.getType().isAnchor() && top.getAllChildren() != null && !top.getAllChildren().isEmpty()) {
             contentFields.add(new ContentField("GOOBI-ANCHOR-DOCTYPE", topType));
             topType = top.getAllChildren().get(0).getType().getName();
         }
@@ -382,7 +379,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws XSLTransformException
      * @throws IOException
      */
-    private Document doXmlTransformation(Document doc) throws XSLTransformException, IOException {
+    private Document doXmlTransformation(Document doc) throws XSLTransformException {
         String xsltfile = config.getString("xslt");
         String xsltpath = ConfigurationHelper.getInstance().getXsltFolder() + xsltfile;
         XSLTransformer transformer;
@@ -398,7 +395,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws IOException
      * @throws FileNotFoundException
      */
-    private void writeDocumentToFile(Document doc, String filename) throws IOException, FileNotFoundException {
+    private void writeDocumentToFile(Document doc, String filename) throws IOException {
         XMLOutputter xmlOutputter = new XMLOutputter(Format.getPrettyFormat());
         File f = new File(ConfigurationHelper.getInstance().getTemporaryFolder(), filename);
         try (FileOutputStream fileOutputStream = new FileOutputStream(f)) {
@@ -438,21 +435,12 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     @Override
     public HashMap<String, StepReturnValue> validate() {
-        return null;
+        return null; //NOSONAR
     }
 
     @Override
     public boolean execute() {
         PluginReturnValue ret = run();
         return ret != PluginReturnValue.ERROR;
-    }
-
-    public static void main(String[] args) {
-        String value =
-                "Papier auf Leinen, Druck, in der vorhandenen Ausfertigung als Rollbilder zwischen zwei schwarz lackierten Holzleisten am oberen und unteren Bildrand aufgespannt, mittig auf der oberen Leiste eine schwarze Schnur zum Zusammenbinden, orginal  war die Leinwand mit Ösen versehen.; Material 2; Material 3";
-        String[] vlist = value.split("; ");
-        for (String s : vlist) {
-            System.out.println(s);
-        }
     }
 }
