@@ -51,9 +51,11 @@ import org.jdom2.transform.XSLTransformer;
 import de.sub.goobi.config.ConfigPlugins;
 import de.sub.goobi.config.ConfigurationHelper;
 import de.sub.goobi.helper.Helper;
+import de.sub.goobi.helper.UghHelper;
 import de.sub.goobi.helper.VariableReplacer;
 import de.sub.goobi.helper.exceptions.DAOException;
 import de.sub.goobi.helper.exceptions.SwapException;
+import de.sub.goobi.helper.exceptions.UghHelperException;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
@@ -61,6 +63,8 @@ import ugh.dl.DocStruct;
 import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
 import ugh.dl.MetadataType;
+import ugh.dl.Person;
+import ugh.dl.Reference;
 import ugh.exceptions.PreferencesException;
 import ugh.exceptions.ReadException;
 import ugh.exceptions.UGHException;
@@ -114,61 +118,26 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             MetadataType idType = p.getRegelsatz().getPreferences().getMetadataTypeByName("CatalogIDDigital");
             String myId = getExistingMetadata(topstruct, idType);
 
-            // try to read existing DOI
-            String doiTypeName = config.getString("metadata", "DOI");
-            MetadataType doiType = p.getRegelsatz().getPreferences().getMetadataTypeByName(doiTypeName);
-            String myDoi = getExistingMetadata(topstruct, doiType);
-            boolean hadDoi = StringUtils.isNotBlank(myDoi);
+            // create or update doi for top element
+            successful = processElement(topstruct, myId, false);
 
-            // add the new or existing DOI as contentfield
-            if (!hadDoi) {
-                // prepare a new DOI name if not existing
-                String name = config.getString("name");
-                String prefix = config.getString("prefix");
-                String separator = config.getString("separator", "-");
-                String postfix = "";
-                if (StringUtils.isNotBlank(prefix)) {
-                    postfix = prefix + separator;
+            if (successful) {
+                // get the list of all subelement types to register/update as well
+                List<String> subTypes = new ArrayList();
+                for (Object o : config.getList("structureType")) {
+                    subTypes.add((String) o);
                 }
-                if (StringUtils.isNotBlank(name)) {
-                    postfix += name + separator;
+
+                // iterate through all subelements to see if these match to the searched types
+                if (subTypes.size() > 0) {
+                    List<DocStruct> subs = getAllSubElementsOfType(topstruct, subTypes);
+                    for (DocStruct ds : subs) {
+                        successful = processElement(ds, myId + "_" + (subs.indexOf(ds) + 1), true);
+                    }
                 }
-                myDoi = config.getString("base") + "/" + postfix + myId;
             }
 
-            // create the list of all content fields with metadata replaced in it
-            List<ContentField> contentFields = createContentFieldList();
-            contentFields.add(new ContentField("GOOBI-DOI", myDoi));
-
-            // create an xml document to allow xslt transformation afterwards
-            Document doc = createXmlDocumentOfContent(contentFields);
-
-            // if debug mode is switched on write that xml file into Goobi temp folder
-            if (config.getBoolean("debugMode", false)) {
-                writeDocumentToFile(doc, "doi_in.xml");
-            }
-
-            // do the xslt transformation
-            Document datacitedoc = doXmlTransformation(doc);
-
-            // if debug mode is switched on write that xml file into Goobi temp folder
-            if (config.getBoolean("debugMode", false)) {
-                writeDocumentToFile(datacitedoc, "doi_out.xml");
-            }
-
-            // create or update DOI
-            if (!hadDoi) {
-                // register a complete new DOI
-                successful = createDoi(topstruct, myDoi, doiType, datacitedoc);
-            } else {
-                // update the existing DOI
-                updateDoi(myDoi, datacitedoc);
-            }
-
-            // check if doi is accessible
-            log.debug("DOI is accessible: " + HelperHttp.checkUrlBasicAuth("doi/" + myDoi, config));
-
-        } catch (UGHException | IOException | SwapException | JDOMException e) {
+        } catch (UGHException | IOException | SwapException | JDOMException | UghHelperException e) {
             log.error("Error while executing the DOI plugin", e);
             Helper.addMessageToProcessJournal(getStep().getProcessId(), LogType.ERROR,
                     "An error happend during the registration of DOIs: " + e.getMessage());
@@ -179,6 +148,134 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             return PluginReturnValue.ERROR;
         }
         return PluginReturnValue.FINISH;
+    }
+
+    /**
+     * Iterate through all sub elements of a given DocStruct
+     *
+     * @param subTypes
+     * @return
+     */
+    private List<DocStruct> getAllSubElementsOfType(DocStruct parent, List<String> subTypes) {
+        List<DocStruct> found = new ArrayList<>();
+        for (DocStruct child : parent.getAllChildrenAsFlatList()) {
+            if (subTypes.contains(child.getType().getName())) {
+                found.add(child);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * create or update a doi for a given structure element
+     * 
+     * @param struct
+     * @param myId
+     * @return
+     * @throws IOException
+     * @throws UGHException
+     * @throws SwapException
+     * @throws XSLTransformException
+     * @throws UghHelperException
+     */
+    private boolean processElement(DocStruct struct, String myId, boolean isSubElement)
+            throws IOException, UGHException, SwapException, XSLTransformException, UghHelperException {
+        boolean successful = false;
+
+        // try to read existing DOI
+        String doiTypeName = config.getString("metadata", "DOI");
+        MetadataType doiType = p.getRegelsatz().getPreferences().getMetadataTypeByName(doiTypeName);
+        String myDoi = getExistingMetadata(struct, doiType);
+        boolean hadDoi = StringUtils.isNotBlank(myDoi);
+
+        // add the new or existing DOI as contentfield
+        if (!hadDoi) {
+            // prepare a new DOI name if not existing
+            String name = config.getString("name");
+            String prefix = config.getString("prefix");
+            String separator = config.getString("separator", "-");
+            String postfix = "";
+            if (StringUtils.isNotBlank(prefix)) {
+                postfix = prefix + separator;
+            }
+            if (StringUtils.isNotBlank(name)) {
+                postfix += name + separator;
+            }
+            myDoi = config.getString("base") + "/" + postfix + myId;
+        }
+
+        // create the list of all content fields with metadata replaced in it
+        List<ContentField> contentFields = createContentFieldList();
+        contentFields.add(new ContentField("GOOBI-DOI", myDoi));
+
+        // add the type of the subelement if it is one and the page range
+        if (isSubElement) {
+            contentFields.add(new ContentField("SUBELEMENT", struct.getType().getName()));
+
+            // get first and last assigned page
+            List<Reference> refs = struct.getAllToReferences("logical_physical");
+            if (refs != null && refs.size() > 0) {
+                MetadataType mdt = new UghHelper().getMetadataType(p.getRegelsatz().getPreferences(), "logicalPageNumber");
+
+                List<? extends Metadata> listStart = refs.get(0).getTarget().getAllMetadataByType(mdt);
+                List<? extends Metadata> listEnd = refs.get(refs.size() - 1).getTarget().getAllMetadataByType(mdt);
+
+                if (listStart != null && listStart.size() > 0) {
+                    contentFields.add(new ContentField("SUBELEMENT-PAGE-START", listStart.get(0).getValue()));
+                }
+                if (listEnd != null && listEnd.size() > 0) {
+                    contentFields.add(new ContentField("SUBELEMENT-PAGE-END", listEnd.get(0).getValue()));
+                }
+            }
+
+        }
+
+        // add all existing metadata of docstruct
+        if (struct.getAllMetadata() != null) {
+            for (Metadata m : struct.getAllMetadata()) {
+                if (StringUtils.isNotBlank(m.getValue())) {
+                    contentFields.add(new ContentField("METADATA-" + m.getType().getName(), m.getValue()));
+                }
+            }
+        }
+        // add all existing persons of docstruct
+        if (struct.getAllPersons() != null) {
+            for (Person p : struct.getAllPersons()) {
+                if (StringUtils.isNotBlank(p.getDisplayname())) {
+                    contentFields.add(new ContentField("PERSON-" + p.getRole(), p.getDisplayname()));
+                }
+            }
+        }
+
+        // create an xml document to allow xslt transformation afterwards
+        Document doc = createXmlDocumentOfContent(contentFields);
+
+        // if debug mode is switched on write that xml file into Goobi temp folder
+        if (config.getBoolean("debugMode", false)) {
+            writeDocumentToFile(doc, "doi_in.xml");
+        }
+
+        // do the xslt transformation
+        Document datacitedoc = doXmlTransformation(doc);
+
+        // if debug mode is switched on write that xml file into Goobi temp folder
+        if (config.getBoolean("debugMode", false)) {
+            writeDocumentToFile(datacitedoc, "doi_out.xml");
+        }
+
+        // create or update DOI
+        if (!hadDoi) {
+            // register a complete new DOI
+            successful = createDoi(struct, myDoi, doiType, datacitedoc);
+        } else {
+            // update the existing DOI
+            updateDoi(myDoi, datacitedoc);
+            successful = true;
+        }
+
+        // check if doi is accessible
+        log.debug("DOI is accessible: " + HelperHttp.checkUrlBasicAuth("doi/" + myDoi, config));
+        return successful;
     }
 
     /**

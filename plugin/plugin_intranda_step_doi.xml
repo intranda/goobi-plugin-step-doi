@@ -37,9 +37,14 @@
 		<!-- metadata field from ruleset where to store the DOI -->
 		<metadata>DOI</metadata>
 		
-		      <!-- Path to the xsl file that shall be used for the datacite xml generation 
+		<!-- Path to the xsl file that shall be used for the datacite xml generation 
 		(file must be located inside of the central Goobi xslt folder) -->
 		<xslt>doi.xsl</xslt>
+		
+		<!-- list of structure types (sub elements like Articles etc.) that shall receive a doi as well 
+		<structureType>Article</structureType>
+		<structureType>Introduction</structureType>
+		-->
 		
 		<field name="LANGUAGE" default="- UNKNOWN LANGUAGE -">
 			<data content="{meta.DocLanguage}"/>
