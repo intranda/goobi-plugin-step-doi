@@ -109,8 +109,25 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(), p, null);
 
             // load topstruct
+            List<ContentField> anchorFields = new ArrayList<ContentField>();
             DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
             if (topstruct.getType().isAnchor()) {
+                // add all existing metadata of anchor
+                if (topstruct.getAllMetadata() != null) {
+                    for (Metadata m : topstruct.getAllMetadata()) {
+                        if (StringUtils.isNotBlank(m.getValue())) {
+                            anchorFields.add(new ContentField("ANCHOR-METADATA-" + m.getType().getName(), m.getValue()));
+                        }
+                    }
+                }
+                // add all existing persons of anchor
+                if (topstruct.getAllPersons() != null) {
+                    for (Person p : topstruct.getAllPersons()) {
+                        if (StringUtils.isNotBlank(p.getDisplayname())) {
+                            anchorFields.add(new ContentField("ANCHOR-PERSON-" + p.getRole(), p.getDisplayname()));
+                        }
+                    }
+                }
                 topstruct = topstruct.getAllChildren().get(0);
             }
 
@@ -119,7 +136,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             String myId = getExistingMetadata(topstruct, idType);
 
             // create or update doi for top element
-            successful = processElement(topstruct, myId, false);
+            successful = processElement(topstruct, myId, false, anchorFields);
 
             if (successful) {
                 // get the list of all subelement types to register/update as well
@@ -132,7 +149,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
                 if (subTypes.size() > 0) {
                     List<DocStruct> subs = getAllSubElementsOfType(topstruct, subTypes);
                     for (DocStruct ds : subs) {
-                        successful = processElement(ds, myId + "_" + (subs.indexOf(ds) + 1), true);
+                        successful = processElement(ds, myId + "_" + (subs.indexOf(ds) + 1), true, anchorFields);
                     }
                 }
             }
@@ -178,7 +195,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws XSLTransformException
      * @throws UghHelperException
      */
-    private boolean processElement(DocStruct struct, String myId, boolean isSubElement)
+    private boolean processElement(DocStruct struct, String myId, boolean isSubElement, List<ContentField> anchorFields)
             throws IOException, UGHException, SwapException, XSLTransformException, UghHelperException {
         boolean successful = false;
 
@@ -207,6 +224,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         // create the list of all content fields with metadata replaced in it
         List<ContentField> contentFields = createContentFieldList();
         contentFields.add(new ContentField("GOOBI-DOI", myDoi));
+        contentFields.addAll(anchorFields);
 
         // add the type of the subelement if it is one and the page range
         if (isSubElement) {
