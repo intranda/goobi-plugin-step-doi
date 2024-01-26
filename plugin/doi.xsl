@@ -255,12 +255,14 @@
 
 
 <!-- ========================== Available internal elements ========================== 
+	
 	- Publication type of anchor document (e.g. Periodical) <xsl:value-of select="//GOOBI-ANCHOR-DOCTYPE"/> 
 	- Publication type of document (e.g. Monograph or Volume) <xsl:value-of select="//GOOBI-DOCTYPE"/> 
-	- Generated DOI <xsl:value-of select="//GOOBI-DOI"/> - Specific metadata 
-	(e.g. TitleDocMain) <xsl:value-of select="//METADATA-TitleDocMain"/> - Specific 
-	person (e.g. Author) <xsl:value-of select="//PERSON-Author"/> - Type of Structure 
-	element (e.g. Article) if it is one <xsl:value-of select="//SUBELEMENT"/> 
+	- Generated DOI <xsl:value-of select="//GOOBI-DOI"/> 
+	- Specific metadata (e.g. TitleDocMain) <xsl:value-of select="//METADATA-TitleDocMain"/> 
+	- Specific person (e.g. Author) <xsl:value-of select="//PERSON-Author"/> 
+	- Type of Structure element (e.g. Article) if it is one <xsl:value-of select="//SUBELEMENT"/> 
 	- Start page of a structure element (e.g. [1]) <xsl:value-of select="//SUBELEMENT-PAGE-START"/> 
 	- End page of a structure element (e.g. 23) <xsl:value-of select="//SUBELEMENT-PAGE-END"/> 
-	========================== // Available internal elements ========================== -->
+
+========================== // Available internal elements ========================== -->

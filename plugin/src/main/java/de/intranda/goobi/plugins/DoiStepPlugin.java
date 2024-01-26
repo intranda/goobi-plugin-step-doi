@@ -413,7 +413,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         // Create a list of variables
         List<ContentField> contentFields = new ArrayList<>();
         String separator = "; ";
-        replacer.setSEPARATOR(separator);
+        replacer.setSeparator(separator);
 
         // run through all defined fields to fill their content
         List<HierarchicalConfiguration> fields = config.configurationsAt("field");
