@@ -109,7 +109,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
             replacer = new VariableReplacer(ff.getDigitalDocument(), p.getRegelsatz().getPreferences(), p, null);
 
             // load topstruct
-            List<ContentField> anchorFields = new ArrayList<ContentField>();
+            List<ContentField> anchorFields = new ArrayList<>();
             DocStruct topstruct = ff.getDigitalDocument().getLogicalDocStruct();
             if (topstruct.getType().isAnchor()) {
                 // add all existing metadata of anchor
@@ -122,9 +122,9 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
                 }
                 // add all existing persons of anchor
                 if (topstruct.getAllPersons() != null) {
-                    for (Person p : topstruct.getAllPersons()) {
-                        if (StringUtils.isNotBlank(p.getDisplayname())) {
-                            anchorFields.add(new ContentField("ANCHOR-PERSON-" + p.getRole(), p.getDisplayname()));
+                    for (Person per : topstruct.getAllPersons()) {
+                        if (StringUtils.isNotBlank(per.getDisplayname())) {
+                            anchorFields.add(new ContentField("ANCHOR-PERSON-" + per.getRole(), per.getDisplayname()));
                         }
                     }
                 }
@@ -140,13 +140,13 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
             if (successful) {
                 // get the list of all subelement types to register/update as well
-                List<String> subTypes = new ArrayList();
+                List<String> subTypes = new ArrayList<>();
                 for (Object o : config.getList("structureType")) {
                     subTypes.add((String) o);
                 }
 
                 // iterate through all subelements to see if these match to the searched types
-                if (subTypes.size() > 0) {
+                if (!subTypes.isEmpty()) {
                     List<DocStruct> subs = getAllSubElementsOfType(topstruct, subTypes);
                     for (DocStruct ds : subs) {
                         successful = processElement(ds, myId + "_" + (subs.indexOf(ds) + 1), true, anchorFields);
@@ -208,8 +208,9 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         // add the new or existing DOI as contentfield
         if (!hadDoi) {
             // prepare a new DOI name if not existing
-            String name = config.getString("name");
-            String prefix = config.getString("prefix");
+
+            String name = replacer.replace(config.getString("name"));
+            String prefix = replacer.replace(config.getString("prefix"));
             String separator = config.getString("separator", "-");
             String postfix = "";
             if (StringUtils.isNotBlank(prefix)) {
@@ -232,16 +233,16 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
             // get first and last assigned page
             List<Reference> refs = struct.getAllToReferences("logical_physical");
-            if (refs != null && refs.size() > 0) {
+            if (refs != null && !refs.isEmpty()) {
                 MetadataType mdt = new UghHelper().getMetadataType(p.getRegelsatz().getPreferences(), "logicalPageNumber");
 
                 List<? extends Metadata> listStart = refs.get(0).getTarget().getAllMetadataByType(mdt);
                 List<? extends Metadata> listEnd = refs.get(refs.size() - 1).getTarget().getAllMetadataByType(mdt);
 
-                if (listStart != null && listStart.size() > 0) {
+                if (listStart != null && !listStart.isEmpty()) {
                     contentFields.add(new ContentField("SUBELEMENT-PAGE-START", listStart.get(0).getValue()));
                 }
-                if (listEnd != null && listEnd.size() > 0) {
+                if (listEnd != null && !listEnd.isEmpty()) {
                     contentFields.add(new ContentField("SUBELEMENT-PAGE-END", listEnd.get(0).getValue()));
                 }
             }
@@ -258,9 +259,9 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
         }
         // add all existing persons of docstruct
         if (struct.getAllPersons() != null) {
-            for (Person p : struct.getAllPersons()) {
-                if (StringUtils.isNotBlank(p.getDisplayname())) {
-                    contentFields.add(new ContentField("PERSON-" + p.getRole(), p.getDisplayname()));
+            for (Person per : struct.getAllPersons()) {
+                if (StringUtils.isNotBlank(per.getDisplayname())) {
+                    contentFields.add(new ContentField("PERSON-" + per.getRole(), per.getDisplayname()));
                 }
             }
         }
