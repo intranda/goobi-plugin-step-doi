@@ -3,6 +3,10 @@ title: Plugin zur DOI-Registrierung
 identifier: intranda_step_doi
 published: true
 description: Dies ist ein Goobi Step-Plugin, um die Registrierung von digitalen Objekten beim DataCite DOI-Dienst zu ermöglichen.
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Step Plugin
 ---
 ## Einführung
 Die vorliegende Dokumentation beschreibt die Installation, Konfiguration und den Einsatz eines Plugins zum Registrieren von DOIs über die DataCite API.
