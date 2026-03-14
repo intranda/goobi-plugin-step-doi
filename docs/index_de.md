@@ -12,7 +12,7 @@ keywords:
 Die vorliegende Dokumentation beschreibt die Installation, Konfiguration und den Einsatz eines Plugins zum Registrieren von DOIs über die DataCite API.
 
 :::info
-**ACHTUNG:** Zu beachten ist, dass dieses Plugin eine Neuimplementierung des [datacite-doi-Plugins](https://docs.goobi.io/de/workflow/plugins/step/goobi-plugin-step-datacite-doi) ist, die mittels XSLT arbeitet. Diese Implementierung ist bisher darauf beschränkt, dass DOIs für eigenständige Werke (z.B. Monographien und Zeitschriftenbände) registriert werden können. Eine Registrierung von DOIs für Strukturelemente (z.B. für Zeitschriftenartikel) ist mit diesem Plugin bisher nicht möglich.
+**ACHTUNG:** Zu beachten ist, dass dieses Plugin eine Neuimplementierung des datacite-doi-Plugins ist, die mittels XSLT arbeitet. Diese Implementierung ist bisher darauf beschränkt, dass DOIs für eigenständige Werke (z.B. Monographien und Zeitschriftenbände) registriert werden können. Eine Registrierung von DOIs für Strukturelemente (z.B. für Zeitschriftenartikel) ist mit diesem Plugin bisher nicht möglich.
 :::
 
 
