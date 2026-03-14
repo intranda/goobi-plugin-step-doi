@@ -11,8 +11,9 @@ keywords:
 ## Introduction
 This documentation describes the installation, configuration and use of a plugin for registering DOIs via the DataCite API.
 
-**ATTENTION:** It should be noted that this plugin is a new implementation of the [datacite-doi plugin](https://docs.goobi.io/goobi-workflow-plugins-en/step/intranda_step_datacite_doi), which works using XSLT. This implementation has so far been limited to allowing DOIs to be registered for stand-alone works (e.g. monographs and journal volumes). Registering DOIs for structural elements (e.g. for journal articles) is not yet possible with this plugin.
-
+:::info
+**ATTENTION:** It should be noted that this plugin is a new implementation of the [datacite-doi plugin](https://docs.goobi.io/en/workflow/plugins/step/goobi-plugin-step-datacite-doi), which works using XSLT. This implementation has so far been limited to allowing DOIs to be registered for stand-alone works (e.g. monographs and journal volumes). Registering DOIs for structural elements (e.g. for journal articles) is not yet possible with this plugin.
+:::
 
 ## Installation
 The plugin consists of the following files:
