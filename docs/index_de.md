@@ -29,7 +29,7 @@ Die Datei `plugin_intranda_step_doi-base.jar` enthält die Programmlogik. Sie mu
 /opt/digiverso/goobi/plugins/step/plugin_intranda_step_doi-base.jar
 ```
 
-Bei der Datei `doi.xsl` handelt es sich um die Transformationsdatei, die das Grundgerüst der DataCite-Metadaten darstellt, in die das Plugin die individuellen Metdaten des jeweiligen Vorgangs einfügt, um anschließend die DOIs damit zu registrieren. Sie muss unter diesem Pfad installiert werden:
+Bei der Datei `doi.xsl` handelt es sich um die Transformationsdatei, die das Grundgerüst der DataCite-Metadaten darstellt, in die das Plugin die individuellen Metadaten des jeweiligen Vorgangs einfügt, um anschließend die DOIs damit zu registrieren. Sie muss unter diesem Pfad installiert werden:
 
 ```bash
 /opt/digiverso/goobi/xslt/doi.xsl
@@ -49,7 +49,7 @@ Um das Plugin in Betrieb zu nehmen, muss es für eine oder mehrere gewünschte A
 
 Da dieses Plugin in der Regel automatisch ausgeführt werden soll, sollte der Workflow-Schritt im Workflow als automatisch konfiguriert werden. Da das Plugin den DOI in die Metadatendatei des Vorgangs schreibt, sollte das Kontrollkästchen für `Update metadata index when finishing` ebenfalls aktiviert sein.
 
-Dieses Plugin liest zunächst seine Konfigurationsdatei ein und versucht die Field-Variablen mit denjenigen Inhalten der METS-Datei zu füllen, die in der Konfiguration definiert wurden. Die Field-Variablen werden dabei von oben nach unten durchlaufen. Sobald ein Wert in einem definierten Feld ermittelt wurde, wird dieser der Variable zugewiesen. Wurde kein Wert in keine der Felder ermittelt, wird stattdessen der default-Wert verwendet. Ist kein default-Wert definiert für eine Field-Variable, bleibt diese leer.
+Dieses Plugin liest zunächst seine Konfigurationsdatei ein und versucht die Field-Variablen mit denjenigen Inhalten der METS-Datei zu füllen, die in der Konfiguration definiert wurden. Die Field-Variablen werden dabei von oben nach unten durchlaufen. Sobald ein Wert in einem definierten Feld ermittelt wurde, wird dieser der Variable zugewiesen. Wurde kein Wert in keinem der Felder ermittelt, wird stattdessen der default-Wert verwendet. Ist kein default-Wert definiert für eine Field-Variable, bleibt diese leer.
 
 Nach der Erzeugung der Field-Variablen werden diese als eine xml-Datei der Transformationsdatei übergeben. Diese nutzt die definierten Field-Variablen, um die Inhalte aus der METS-Datei einzufügen. Die somit erzeugte DataCite-xml-Datei wird anschließend für die Registrierung bzw. das Update der DOIs bei DataCite genutzt, wobei die Zugangsdaten und URL-Informationen aus der Konfigurationsdatei zum Einsatz kommen.
 
