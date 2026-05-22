@@ -2,6 +2,9 @@ package de.intranda.goobi.plugins;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -27,16 +30,23 @@ public class HelperHttp {
      * @param url
      * @return
      * @throws IOException
+     * @throws URISyntaxException
      */
-    public static boolean checkUrl(String url) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+    public static boolean checkUrl(String url) throws IOException, URISyntaxException {
+        URL parsedUrl = new URI(url).toURL();
+        String scheme = parsedUrl.getProtocol();
+        if (!"http".equals(scheme) && !"https".equals(scheme)) {
+            throw new IOException("SSRF protection: URL scheme not allowed: " + scheme);
+        }
+        InetAddress address = InetAddress.getByName(parsedUrl.getHost());
+        if (address.isLoopbackAddress() || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress() || address.isAnyLocalAddress()) {
+            throw new IOException("SSRF protection: URL resolves to private or reserved address: " + url);
+        }
+        HttpURLConnection connection = (HttpURLConnection) parsedUrl.openConnection();
         //connection.setRequestMethod("HEAD");
         int responseCode = connection.getResponseCode();
-        if (responseCode != 200) {
-            return false;
-        } else {
-            return true;
-        }
+        return responseCode == 200;
     }
 
     /**
