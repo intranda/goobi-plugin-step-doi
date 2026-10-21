@@ -185,7 +185,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     /**
      * create or update a doi for a given structure element
-     * 
+     *
      * @param struct
      * @param myId
      * @return
@@ -299,12 +299,12 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     /**
      * create doi and save it in the docstruct.
-     * 
+     *
      * @param prefs
      * @param iIndex
      * @param anchor
      * @param anchor
-     * 
+     *
      * @return Returns the doi.
      * @throws JDOMException
      * @throws UGHException
@@ -385,7 +385,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     /**
      * If the element already has a DOI, return it, otherwise return null.
-     * 
+     *
      * @param docstruct
      * @return
      */
@@ -400,7 +400,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
     /**
      * create a list lf ContentField that contains each configured field with its preferred value in it the values are filled using the variable
      * replacer
-     * 
+     *
      * @return
      * @throws ReadException
      * @throws IOException
@@ -410,11 +410,15 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
      * @throws DAOException
      * @throws WriteException
      */
-    private List<ContentField> createContentFieldList() throws PreferencesException {
+    private List<ContentField> createContentFieldList() throws PreferencesException, IOException, SwapException {
         // Create a list of variables
         List<ContentField> contentFields = new ArrayList<>();
         String separator = "; ";
         replacer.setSeparator(separator);
+
+        // provide the path to the metadata file so that the xslt can load it directly via document()
+        // (needed to resolve fields that live inside an ugh MetadataGroup, which the VariableReplacer cannot read)
+        contentFields.add(new ContentField("GOOBI-METS-PATH", p.getMetadataFilePath()));
 
         // run through all defined fields to fill their content
         List<HierarchicalConfiguration> fields = config.configurationsAt("field");
@@ -472,7 +476,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     /**
      * create an XML Document of all contentfields
-     * 
+     *
      * @param contentFields
      * @return
      */
@@ -489,7 +493,7 @@ public class DoiStepPlugin implements IStepPluginVersion2 {
 
     /**
      * do the xslt transformation and pass back the transformation result as xml document
-     * 
+     *
      * @param doc
      * @return
      * @throws XSLTransformException
